@@ -201,8 +201,8 @@ def home():
         transform: scale(1.1);
     }
 
-    button[value="der"] { background-color: #e74c3c; color: white; }
-    button[value="die"] { background-color: #3498db; color: white; }
+    button[value="der"] { background-color: #3498db; color: white; }
+    button[value="die"] { background-color: #e74c3c; color: white; }
     button[value="das"] { background-color: #2ecc71; color: white; }
 
     .feedback {
@@ -387,4 +387,5 @@ def select_sheet():
     """
 
 if __name__ == "__main__":
+
     app.run(host="0.0.0.0", port=10000)
