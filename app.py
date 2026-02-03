@@ -378,7 +378,7 @@ def challenge_result():
         <h1>🎉 Geschafft, {name}!</h1>
         <h2>Unit: <strong>{unit}</strong>
         <p style="font-size:2em;">Zeit: <strong>{time_message}</strong></p>
-        <a href="/reset" style="color:#3498db;">Nochmal spielen</a>
+        <a href="/full_reset" style="color:#3498db;">Nochmal spielen</a>
     </body>
     </html>
     """
@@ -393,6 +393,13 @@ def reset():
         session["player_name"] = player_name
 
     return "", 302, {"Location": "/select_sheet"}
+
+
+@app.route("/full_reset")
+def full_reset():
+    session.clear()
+    return "", 302, {"Location": "/set_name"}
+
 
 @app.route("/scores")
 def scores():
@@ -530,6 +537,7 @@ def select_sheet():
         </style>
     </head>
     <body>
+        <a href="/full_reset" class="restart">✖</a>
         <h1>{session.get('player_name', '')}, welchen Wortschatz möchtest du üben?</h1>
         {sheet_html}
         <p class="feedback">{feedback}</p>
