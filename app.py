@@ -2,6 +2,7 @@ import pandas as pd
 from flask import Flask, request, session
 from gameLogic import Noun, pick_random_noun, check_article,EXCEL_FILE,xl
 import sqlite3
+import time
 from datetime import datetime
 
 DB_FILE = "scores.db"
@@ -133,11 +134,63 @@ def save_score(name, points, guesses):
     conn.commit()
     conn.close()
 
+@app.route("/select_mode", methods=["GET", "POST"])
+def select_mode():
+    if request.method == "POST":
+        mode = request.form.get("mode")
+        if mode in ["practice", "challenge"]:
+            session["mode"] = mode
+
+            if mode == "challenge":
+                session["start_time"] = time.time()
+                session["remaining_nouns"] = session["nouns"].copy()
+                session["current_noun"] = pick_random_noun(session["remaining_nouns"])
+            return "", 302, {"Location": "/"}
+
+    return f"""
+    <html>
+    <head>
+        <title>Modus wählen</title>
+        <style>
+            body {{
+                background-color: #121212;
+                color: white;
+                font-family: 'Segoe UI', sans-serif;
+                text-align: center;
+                padding: 50px;
+            }}
+            button {{
+                font-size: 2em;
+                padding: 20px 40px;
+                margin: 20px;
+                border-radius: 15px;
+                border: none;
+                cursor: pointer;
+            }}
+            .practice {{ background-color: #2ecc71; }}
+            .challenge {{ background-color: #e74c3c; }}
+        </style>
+    </head>
+    <body>
+        <h1>Wie möchtest du üben?</h1>
+        <form method="post">
+            <button class="practice" name="mode" value="practice">
+                Freies Üben
+            </button>
+            <button class="challenge" name="mode" value="challenge">
+                Herausforderung
+            </button>
+        </form>
+    </body>
+    </html>
+    """
+
 
 @app.route("/", methods=["GET", "POST"])
 def home():
+    mode = session.get("mode", "practice")
     player_name = session.get("player_name")
-    if "player_name" not in session:
+    if not player_name:
         return "", 302, {"Location": "/set_name"}
 
     if "nouns" not in session:
@@ -148,23 +201,44 @@ def home():
         session["points"] = 0
         session["guesses"] = 0
 
-    if "current_noun" not in session:
-            session["current_noun"] = pick_random_noun(session["nouns"]).__dict__
-
-    feedback = ""
     current_noun = Noun(**session["current_noun"])
+    feedback = ""
 
+    # Words left (for challenge mode)
+    words_left_text = ""
+    if mode == "challenge":
+        words_left_text = f"Wörter übrig: {len(session['remaining_nouns'])}"
+
+    # Handle POST (guess submission)
     if request.method == "POST":
-        guess = request.form["article"]
+        guess = request.form.get("article")
         session["guesses"] += 1
 
-        if check_article(current_noun, guess):
+        correct = check_article(current_noun, guess)
+
+        if correct:
             session["points"] += 1
-            feedback = "✅ Richtig!"
+            feedback = f"✅ Richtig! {current_noun.article} {current_noun.word}"
+            if mode == "challenge":
+                # Remove the current noun from remaining
+                session["remaining_nouns"].remove(session["current_noun"])
         else:
             feedback = f"❌ Falsch. Richtig ist: {current_noun.article} {current_noun.word}"
+            if mode == "challenge":
+                # Re-add incorrectly guessed noun
+                if session["current_noun"] not in session["remaining_nouns"]:
+                    session["remaining_nouns"].append(session["current_noun"])
 
-        session["current_noun"] = pick_random_noun(session["nouns"])
+        # Next noun
+        if mode == "challenge":
+            if not session["remaining_nouns"]:
+                elapsed = round(time.time() - session["start_time"], 1)
+                session["final_time"] = elapsed
+                return "", 302, {"Location": "/challenge_result"}
+            session["current_noun"] = pick_random_noun(session["remaining_nouns"])
+        else:
+            session["current_noun"] = pick_random_noun(session["nouns"])
+
         current_noun = Noun(**session["current_noun"])
 
     accuracy = (
@@ -172,62 +246,69 @@ def home():
         if session["guesses"] > 0 else 0
     )
 
-    # CSS styling
-    style = """<style>
-    body {
-        background-color: #121212; /* nice dark background */
-        color: #ffffff; /* white text */
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        text-align: center;
-        padding: 50px;
-    }
+    # Timer JS for challenge mode
+    timer_script = ""
+    if mode == "challenge":
+        timer_script = """
+        <div id="timer" style="position:fixed; top:20px; left:20px; font-size:1.5em; color:white;">
+            ⏱️ 00:00:00
+        </div>
+        <script>
+            const startTime = """ + str(session['start_time']) + """;
+        
+            function updateTimer() {
+                let elapsed = Math.floor(Date.now()/1000 - startTime);
+                let hours = Math.floor(elapsed / 3600).toString().padStart(2,'0');
+                let minutes = Math.floor((elapsed % 3600)/60).toString().padStart(2,'0');
+                let seconds = (elapsed % 60).toString().padStart(2,'0');
+                document.getElementById('timer').textContent = `⏱️ ${hours}:${minutes}:${seconds}`;
+            }
+        
+            setInterval(updateTimer, 1000);
+            updateTimer();
+        </script>
+        """
 
-    h1 {
-        font-size: 2.5em;
-        margin-bottom: 20px;
-    }
-
-    button {
-        font-size: 1.5em;
-        margin: 10px;
-        padding: 15px 30px;
-        border-radius: 10px;
-        border: none;
-        cursor: pointer;
-        transition: transform 0.1s;
-    }
-
-    button:hover {
-        transform: scale(1.1);
-    }
-
-    button[value="der"] { background-color: #3498db; color: white; }
-    button[value="die"] { background-color: #e74c3c; color: white; }
-    button[value="das"] { background-color: #2ecc71; color: white; }
-
-    .feedback {
-        font-size: 1.3em;
-        margin: 20px 0;
-    }
-
-    .score {
-        margin-top: 30px;
-        font-size: 1.2em;
-    }
-
-    .restart {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        font-size: 2em;
-        color: #ffffff;
-        text-decoration: none;
-    }
-
-    .restart:hover {
-        color: #e74c3c;
-    }
-</style>"""
+    # CSS
+    style = """
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            padding: 50px;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        button.article {
+            font-size: 1.5em;
+            margin: 10px;
+            padding: 15px 30px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        button.article:hover { transform: scale(1.1); }
+        button.article[value="der"] { background-color: #3498db; color: white; }
+        button.article[value="die"] { background-color: #e74c3c; color: white; }
+        button.article[value="das"] { background-color: #2ecc71; color: white; }
+        .feedback { font-size: 1.3em; margin: 20px 0; }
+        .score { margin-top: 30px; font-size: 1.2em; }
+        .restart {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 2em;
+            color: #ffffff;
+            text-decoration: none;
+        }
+        .restart:hover { color: #e74c3c; }
+    </style>
+    """
 
     # Full HTML
     return f"""
@@ -237,16 +318,18 @@ def home():
         {style}
     </head>
     <body>
+        {timer_script}
+
         <a href="/reset" class="restart">✖</a>
 
-        <h1>Welcher Artikel, <h1>{player_name}?</h1>
+        <h1>Welcher Artikel, {player_name}?</h1>
 
         <p style="font-size:2em;"><strong>{current_noun.word}</strong></p>
 
         <form method="post">
-            <button name="article" value="der">der</button>
-            <button name="article" value="die">die</button>
-            <button name="article" value="das">das</button>
+            <button class="article" name="article" value="der">der</button>
+            <button class="article" name="article" value="die">die</button>
+            <button class="article" name="article" value="das">das</button>
         </form>
 
         <p class="feedback">{feedback}</p>
@@ -256,6 +339,44 @@ def home():
             <p>Versuche: {session["guesses"]}</p>
             <p>Genauigkeit: {accuracy}%</p>
         </div>
+
+        {"<p style='font-size:1.5em; margin-top:20px; color:white;'>" + words_left_text + "</p>" if mode=="challenge" else ""}
+    </body>
+    </html>
+    """
+
+
+@app.route("/challenge_result")
+def challenge_result():
+    time_taken = session.get("final_time", 0)
+    if float(time_taken) > 60:
+        minutes_taken = str(int(float(time_taken) // 60))
+        seconds_taken = int(float(time_taken) - float(minutes_taken) * 60)
+        time_message = f"{minutes_taken} Minuten und {seconds_taken} Sekunden"
+    else:
+        time_message = f"{int(time_taken)} Sekunden"
+    name = session.get("player_name", "")
+    unit = session.get("sheet_name", "")
+
+    return f"""
+    <html>
+    <head>
+        <title>Ergebnis</title>
+        <style>
+            body {{
+                background-color: #121212;
+                color: white;
+                font-family: 'Segoe UI', sans-serif;
+                text-align: center;
+                padding: 50px;
+            }}
+        </style>
+    </head>
+    <body>
+        <h1>🎉 Geschafft, {name}!</h1>
+        <h2>Unit: <strong>{unit}</strong>
+        <p style="font-size:2em;">Zeit: <strong>{time_message}</strong></p>
+        <a href="/reset" style="color:#3498db;">Nochmal spielen</a>
     </body>
     </html>
     """
@@ -339,7 +460,7 @@ def select_sheet():
             # Reset score and guesses
             session["points"] = 0
             session["guesses"] = 0
-            return "", 302, {"Location": "/"}  # go to game
+            return "", 302, {"Location": "/select_mode"}  # go to select mode
         else:
             feedback = "Bitte wähle einen gültigen Wortschatz aus!"
     else:
@@ -387,5 +508,4 @@ def select_sheet():
     """
 
 if __name__ == "__main__":
-
     app.run(host="0.0.0.0", port=10000)
