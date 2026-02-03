@@ -244,16 +244,14 @@ def home():
                 # Re-add incorrectly guessed noun
                 if session["current_noun"] not in session["remaining_nouns"]:
                     session["remaining_nouns"].append(session["current_noun"])
-
         # Next noun
-        if mode == "challenge":
-            if not session["remaining_nouns"]:
+        if mode == "challenge" and not session["remaining_nouns"]:
                 # Challenge finished — save score
                 session["final_time"] = round(time.time() - session["start_time"], 1)
                 save_score()  # <-- save here only
                 return "", 302, {"Location": "/challenge_result"}
         else:
-            session["current_noun"] = pick_random_noun(session["nouns"])
+            session["current_noun"] = pick_random_noun(session["remaining_nouns"])
 
         current_noun = Noun(**session["current_noun"])
 
