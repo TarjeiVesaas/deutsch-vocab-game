@@ -7,6 +7,36 @@ from datetime import datetime
 
 DB_FILE = "scores.db"
 
+def game_type_html(game_type):
+    if game_type == "plural":
+        return """
+        <form method="post">
+            <input type="text" name="plural"
+                   placeholder="Plural eingeben"
+                   style="font-size:1.5em; padding:12px; border-radius:10px;
+                          border:none; text-align:center;">
+            <br><br>
+            <button type="submit"
+                    style="font-size:1.5em; padding:12px 30px;
+                           border-radius:10px; border:none;
+                           background-color:#f1c40f;">
+                Prüfen
+            </button>
+        </form>
+        """
+    else:
+        return """
+        <form method="post">
+            <button class="article" name="article" value="der">der</button>
+            <button class="article" name="article" value="die">die</button>
+            <button class="article" name="article" value="das">das</button>
+        </form>
+        """
+
+
+def normalise(text: str) -> str:
+    return "".join(text.lower().split())
+
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -71,7 +101,7 @@ def set_name():
             if "points" not in session:
                 session["points"] = 0
                 session["guesses"] = 0
-            return "", 302, {"Location": "/select_sheet"}
+            return "", 302, {"Location": "/select_game"}
         else:
             feedback = "Bitte gib einen Namen ein!"
     else:
@@ -122,6 +152,67 @@ def set_name():
     """
 
 
+@app.route("/select_game", methods=["GET", "POST"])
+def select_game():
+    if request.method == "POST":
+        game_type = request.form.get("game_type")
+        if game_type in ["gender", "plural"]:
+            session["game_type"] = game_type
+            return "", 302, {"Location": "/select_sheet"}
+
+    return """
+    <html>
+    <head>
+        <title>Was möchtest du üben?</title>
+        <style>
+            body {
+                background-color: #121212;
+                color: white;
+                font-family: 'Segoe UI', sans-serif;
+                text-align: center;
+                padding: 50px;
+            }
+            h1 {
+                font-size: 2.5em;
+                margin-bottom: 40px;
+            }
+            button {
+                font-size: 2em;
+                padding: 25px 50px;
+                margin: 20px;
+                border-radius: 20px;
+                border: none;
+                cursor: pointer;
+                transition: transform 0.15s;
+            }
+            button:hover {
+                transform: scale(1.08);
+            }
+            .gender {
+                background: linear-gradient(135deg, #3498db, #9b59b6);
+                color: white;
+            }
+            .plural {
+                background: linear-gradient(135deg, #2ecc71, #f1c40f);
+                color: black;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Was möchtest du üben?</h1>
+        <form method="post">
+            <button class="gender" name="game_type" value="gender">
+                🧠 Artikel
+            </button>
+            <button class="plural" name="game_type" value="plural">
+                🔁 Plural
+            </button>
+        </form>
+    </body>
+    </html>
+    """
+
+
 def save_score():
     """Save the current session score to the database."""
     player_name = session.get("player_name")
@@ -150,6 +241,8 @@ def select_mode():
         mode = request.form.get("mode")
         if mode in ["practice", "challenge"]:
             session["mode"] = mode
+            session["remaining_nouns"] = session["nouns"].copy()
+            session["current_noun"] = pick_random_noun(session["remaining_nouns"])
 
             if mode == "challenge":
                 session["start_time"] = time.time()
@@ -198,13 +291,27 @@ def select_mode():
 
 @app.route("/", methods=["GET", "POST"])
 def home():
+    game_type = session.get("game_type", "gender")
     mode = session.get("mode", "practice")
     player_name = session.get("player_name")
-    if not player_name:
-        return "", 302, {"Location": "/set_name"}
+    REQUIRED_SESSION_KEYS = [
+        "player_name",
+        "game_type",
+        "sheet_name",
+        "nouns",
+        "mode",
+    ]
 
-    if "nouns" not in session:
-        return "", 302, {"Location": "/select_sheet"}
+    for key in REQUIRED_SESSION_KEYS:
+        if key not in session:
+            session.clear()
+            return "", 302, {"Location": "/set_name"}
+
+    if "remaining_nouns" not in session:
+        session["remaining_nouns"] = session["nouns"].copy()
+
+    if "current_noun" not in session:
+        session["current_noun"] = pick_random_noun(session["remaining_nouns"])
 
     # Initialize session values (first visit)
     if "points" not in session:
@@ -218,6 +325,11 @@ def home():
             session["current_noun"] = pick_random_noun(session["nouns"])
 
     current_noun = Noun(**session["current_noun"])
+    title_text = (
+        f"Was ist der Plural, {player_name}?"
+        if game_type == "plural"
+        else f"Welcher Artikel, {player_name}?"
+    )
     feedback = ""
 
     # Words left (for challenge mode)
@@ -227,33 +339,56 @@ def home():
 
     # Handle POST (guess submission)
     if request.method == "POST":
-        guess = request.form.get("article")
         session["guesses"] += 1
 
-        correct = check_article(current_noun, guess)
+        if game_type == "plural":
+            guess = request.form.get("plural", "")
+            user_answer = normalise(guess)
+            correct_answer = normalise(current_noun.plural)
 
-        if correct:
-            session["points"] += 1
-            feedback = f"✅ Richtig! {current_noun.article} {current_noun.word}"
+            correct = user_answer == correct_answer
+
+            if correct:
+                session["points"] += 1
+                feedback = f"✅ Richtig! Die Antwort ist: <strong>{current_noun.plural}</strong>"
+            else:
+                feedback = f"❌ Falsch. Richtig ist: <strong>{current_noun.plural}</strong>"
+
             if mode == "challenge":
-                # Remove the current noun from remaining
                 session["remaining_nouns"].remove(session["current_noun"])
-        else:
-            feedback = f"❌ Falsch. Richtig ist: {current_noun.article} {current_noun.word}"
-            if mode == "challenge":
-                # Re-add incorrectly guessed noun
-                if session["current_noun"] not in session["remaining_nouns"]:
-                    session["remaining_nouns"].append(session["current_noun"])
-        # Next noun
-        if mode == "challenge" and not session["remaining_nouns"]:
-                # Challenge finished — save score
-                session["final_time"] = round(time.time() - session["start_time"], 1)
-                save_score()  # <-- save here only
-                return "", 302, {"Location": "/challenge_result"}
-        else:
-            session["current_noun"] = pick_random_noun(session["remaining_nouns"])
 
-        current_noun = Noun(**session["current_noun"])
+            if mode == "challenge" and not session["remaining_nouns"]:
+                session["final_time"] = round(time.time() - session["start_time"], 1)
+                save_score()
+                return "", 302, {"Location": "/challenge_result"}
+
+            session["current_noun"] = pick_random_noun(session["remaining_nouns"])
+            current_noun = Noun(**session["current_noun"])
+
+        else:
+            guess = request.form.get("article", "")
+            correct = check_article(current_noun, guess)
+
+            if correct:
+                session["points"] += 1
+                feedback = f"✅ Richtig! {current_noun.article} {current_noun.word}"
+                if mode == "challenge":
+                    session["remaining_nouns"].remove(session["current_noun"])
+            else:
+                feedback = f"❌ Falsch. Richtig ist: {current_noun.article} {current_noun.word}"
+                if mode == "challenge":
+                    if session["current_noun"] not in session["remaining_nouns"]:
+                        session["remaining_nouns"].append(session["current_noun"])
+            # Next noun
+            if mode == "challenge" and not session["remaining_nouns"]:
+                    # Challenge finished — save score
+                    session["final_time"] = round(time.time() - session["start_time"], 1)
+                    save_score()  # <-- save here only
+                    return "", 302, {"Location": "/challenge_result"}
+            else:
+                session["current_noun"] = pick_random_noun(session["remaining_nouns"])
+
+            current_noun = Noun(**session["current_noun"])
 
     accuracy = (
         round((session["points"] / session["guesses"]) * 100, 1)
@@ -302,6 +437,15 @@ def home():
                 cursor: pointer;
                 transition: transform 0.1s;
             }
+            .noun-word {
+                font-size: 3.2em;
+                font-weight: 800;
+                margin: 30px 0;
+                color: #f1c40f;
+                text-shadow:
+                    0 0 10px rgba(241, 196, 15, 0.6),
+                    0 0 25px rgba(241, 196, 15, 0.4);
+            }
             button.article:hover { transform: scale(1.1); }
             button.article[value="der"] { background-color: #3498db; color: white; }
             button.article[value="die"] { background-color: #e74c3c; color: white; }
@@ -330,23 +474,12 @@ def home():
         <body>
             {timer_script}
             <a href="/reset" class="restart">✖</a>
-            <h1>Welcher Artikel, {player_name}?</h1>
-            <p style="font-size:2em;"><strong>{current_noun.word}</strong></p>
-            <form method="post">
-                <button class="article" name="article" value="der">der</button>
-                <button class="article" name="article" value="die">die</button>
-                <button class="article" name="article" value="das">das</button>
-            </form>
+            <h1>{title_text}</h1>
+            <p class="noun-word">{current_noun.word}</p>
+            {game_type_html(game_type)}
             <p class="feedback">{feedback}</p>
-            <div class="score">
-                <p>Punkte: {session["points"]}</p>
-                <p>Versuche: {session["guesses"]}</p>
-                <p>Genauigkeit: {accuracy}%</p>
-            </div>
-            {"<p style='font-size:1.5em; margin-top:20px; color:white;'>" + words_left_text + "</p>" if mode == "challenge" else ""}
-        </body>
-        </html>
         """
+
 
 @app.route("/challenge_result")
 def challenge_result():
@@ -481,8 +614,15 @@ def select_sheet():
 
     for sheet in sheets:
         # Sheet button
-        sheet_html += f'<h2>{sheet}</h2>'
-        sheet_html += f'<form method="post"><button type="submit" name="sheet" value="{sheet}">{sheet}</button></form>'
+        sheet_html += f"""
+        <div class="sheet-card">
+            <h2>{sheet}</h2>
+            <form method="post">
+                <button type="submit" name="sheet" value="{sheet}">
+                    📘 {sheet}
+                </button>
+            </form>
+        """
 
         # Leaderboard for this sheet (challenge mode only)
         c.execute("""
@@ -495,17 +635,20 @@ def select_sheet():
         rows = c.fetchall()
 
         if rows:
-            sheet_html += "<p>LEADERBOARD:</p><ul style='text-align:left; display:inline-block;'>"
+            sheet_html += "<div class='leaderboard'>"
+            sheet_html += "<div class='leaderboard-title'>🏆 LEADERBOARD</div><ul>"
             for r in rows:
                 name = r[0]
-                total_seconds = int(r[1])  # final_time in seconds
+                total_seconds = int(r[1])
                 minutes = total_seconds // 60
                 seconds = total_seconds % 60
                 accuracy = r[2]
-                sheet_html += f"<li>{name} {minutes} Minuten {seconds} Sekunden ({accuracy}%)</li>"
-            sheet_html += "</ul>"
+                sheet_html += f"<li>{name} – {minutes}m {seconds}s ({accuracy}%)</li>"
+            sheet_html += "</ul></div>"
         else:
-            sheet_html += "<p>LEADERBOARD: </p>"
+            sheet_html += "<div class='leaderboard'><em>No scores yet</em></div>"
+
+        sheet_html += "</div>"
 
     conn.close()
 
@@ -515,26 +658,85 @@ def select_sheet():
         <title>Wortschatz wählen</title>
         <style>
             body {{
-                background-color: #121212;
+                background: radial-gradient(circle at top, #1e1e2f, #121212);
                 color: #ffffff;
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-family: 'Segoe UI', sans-serif;
                 text-align: center;
-                padding: 50px;
+                padding: 40px;
             }}
-            button {{
-                font-size: 1.5em;
-                padding: 15px 30px;
-                margin: 10px;
-                border-radius: 10px;
+    
+            h1 {{
+                font-size: 2.6em;
+                margin-bottom: 40px;
+            }}
+    
+            h2 {{
+                margin-top: 30px;
+                font-size: 1.8em;
+                color: #f1c40f;
+            }}
+    
+            .sheet-card {{
+                background: linear-gradient(145deg, #1f2937, #111827);
+                border-radius: 20px;
+                padding: 25px;
+                margin: 25px auto;
+                width: 70%;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            }}
+    
+            .sheet-card button {{
+                font-size: 1.4em;
+                padding: 15px 40px;
+                border-radius: 15px;
                 border: none;
                 cursor: pointer;
-                transition: transform 0.1s;
+                background: linear-gradient(135deg, #3498db, #9b59b6);
+                color: white;
+                transition: transform 0.15s;
+                margin-top: 10px;
             }}
-            button:hover {{ transform: scale(1.05); }}
-            ul {{ list-style-type: none; padding: 0; }}
-            li {{ margin: 5px 0; }}
-            .feedback {{ color: #e74c3c; margin-top: 20px; }}
+    
+            .sheet-card button:hover {{
+                transform: scale(1.08);
+            }}
+    
+            .leaderboard {{
+                margin-top: 20px;
+                background-color: rgba(255,255,255,0.05);
+                border-radius: 12px;
+                padding: 15px;
+            }}
+    
+            .leaderboard-title {{
+                font-weight: bold;
+                color: #2ecc71;
+                margin-bottom: 10px;
+            }}
+    
+            ul {{
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }}
+    
+            li {{
+                margin: 6px 0;
+                font-size: 1.1em;
+            }}
+        
+            .restart {{
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                font-size: 2em;
+                color: white;
+                text-decoration: none;
+            }}
+        
+            .restart:hover {{color: #e74c3c;}}
         </style>
+
     </head>
     <body>
         <a href="/full_reset" class="restart">✖</a>
