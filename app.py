@@ -1,9 +1,11 @@
 import pandas as pd
 from flask import Flask, request, session
 from gameLogic import Noun, pick_random_noun, check_article,EXCEL_FILE,xl
-import sqlite3
+import psycopg2
+import os
 import time
 from datetime import datetime
+from database import get_connection
 
 DB_FILE = "scores.db"
 
@@ -38,11 +40,11 @@ def normalise(text: str) -> str:
     return "".join(text.lower().split())
 
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_connection()
     c = conn.cursor()
     c.execute("""
         CREATE TABLE IF NOT EXISTS scores (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             player_name TEXT NOT NULL,
             points INTEGER NOT NULL,
             guesses INTEGER NOT NULL,
@@ -226,7 +228,7 @@ def save_score():
     if not player_name:
         return  # nothing to save
 
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_connection()
     c = conn.cursor()
     c.execute("""
         INSERT INTO scores (player_name, points, guesses, accuracy, final_time, sheet_name, timestamp)
@@ -536,7 +538,7 @@ def full_reset():
 
 @app.route("/scores")
 def scores():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_connection()
     c = conn.cursor()
     c.execute("SELECT player_name, points, guesses, accuracy, timestamp FROM scores ORDER BY accuracy DESC LIMIT 10")
     rows = c.fetchall()
@@ -609,7 +611,7 @@ def select_sheet():
 
     # Build sheet buttons and leaderboards
     sheet_html = ""
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_connection()
     c = conn.cursor()
 
     for sheet in sheets:
