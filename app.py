@@ -84,7 +84,7 @@ def load_nouns(sheet_name: str, ):
 init_db()
 
 app = Flask("DeutschA1.1")
-app.secret_key = "super-secret-key-for-learning"
+app.secret_key = os.environ.get("SECRET_KEY", "dev-key")
 
 sheet_name = "Unit 4"
 # TEMPORARY
@@ -232,7 +232,7 @@ def save_score():
     c = conn.cursor()
     c.execute("""
         INSERT INTO scores (player_name, points, guesses, accuracy, final_time, sheet_name, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
     """, (player_name, points, guesses, accuracy, final_time, sheet_name, timestamp))
     conn.commit()
     conn.close()
@@ -630,7 +630,7 @@ def select_sheet():
         c.execute("""
             SELECT player_name, final_time, accuracy
             FROM scores
-            WHERE sheet_name = ?
+            WHERE sheet_name = %s
             ORDER BY final_time ASC
             LIMIT 3
         """, (sheet,))
@@ -750,4 +750,4 @@ def select_sheet():
     """
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(host="0.0.0.0", port=10000, debug=True)
