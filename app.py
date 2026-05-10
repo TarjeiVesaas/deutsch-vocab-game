@@ -628,11 +628,18 @@ def select_sheet():
 
         # Leaderboard for this sheet (challenge mode only)
         c.execute("""
-            SELECT player_name, final_time, accuracy
-            FROM scores
-            WHERE sheet_name = %s
+            SELECT *
+            FROM (
+                SELECT DISTINCT ON (player_name)
+                    player_name,
+                    final_time,
+                    accuracy
+                FROM scores
+                WHERE sheet_name = %s
+                ORDER BY player_name, accuracy DESC, final_time ASC
+            ) AS best_scores
             ORDER BY accuracy DESC, final_time ASC
-            LIMIT 3
+            LIMIT 5
         """, (sheet,))
         rows = c.fetchall()
 
