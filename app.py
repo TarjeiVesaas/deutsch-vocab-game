@@ -631,7 +631,7 @@ def select_sheet():
             SELECT player_name, final_time, accuracy
             FROM scores
             WHERE sheet_name = %s
-            ORDER BY final_time ASC
+            ORDER BY accuracy DESC, final_time ASC
             LIMIT 3
         """, (sheet,))
         rows = c.fetchall()
