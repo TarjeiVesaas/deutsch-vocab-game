@@ -120,6 +120,7 @@ def set_name():
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 text-align: center;
                 padding: 50px;
+                
             }}
             input {{
                 font-size: 1.5em;
@@ -149,6 +150,16 @@ def set_name():
             <button type="submit">Start!</button>
         </form>
         <p class="feedback">{feedback}</p>
+        <div class="background">
+        <span>🥨</span>
+        <span>🇩🇪</span>
+        <span>📚</span>
+        <span>🌭</span>
+        <span>🍺</span>
+        <span>✏️</span>
+        <span>🏰</span>
+        <span>🇩🇪</span>
+        </div>
     </body>
     </html>
     """
@@ -210,6 +221,16 @@ def select_game():
                 🔁 Plural
             </button>
         </form>
+        <div class="background">
+        <span>🥨</span>
+        <span>🇩🇪</span>
+        <span>📚</span>
+        <span>🌭</span>
+        <span>🍺</span>
+        <span>✏️</span>
+        <span>🏰</span>
+        <span>🇩🇪</span>
+        </div>
     </body>
     </html>
     """
@@ -286,6 +307,16 @@ def select_mode():
                 Herausforderung
             </button>
         </form>
+        <div class="background">
+        <span>🥨</span>
+        <span>🇩🇪</span>
+        <span>📚</span>
+        <span>🌭</span>
+        <span>🍺</span>
+        <span>✏️</span>
+        <span>🏰</span>
+        <span>🇩🇪</span>
+        </div>
     </body>
     </html>
     """
@@ -463,6 +494,76 @@ def home():
                 text-decoration: none;
             }
             .restart:hover { color: #e74c3c; }
+            .background{
+    position:fixed;
+    inset:0;
+    overflow:hidden;
+    pointer-events:none;
+    z-index:-1;
+}
+
+.background span{
+    position:absolute;
+    font-size:70px;
+    opacity:0.08;
+    filter:blur(2px);
+
+    animation: float 25s linear infinite;
+}
+
+.background span:nth-child(1){
+    left:5%;
+    animation-duration:30s;
+}
+
+.background span:nth-child(2){
+    left:18%;
+    animation-duration:23s;
+    animation-delay:-8s;
+}
+
+.background span:nth-child(3){
+    left:33%;
+    animation-duration:28s;
+    animation-delay:-2s;
+}
+
+.background span:nth-child(4){
+    left:48%;
+    animation-duration:20s;
+}
+
+.background span:nth-child(5){
+    left:62%;
+    animation-duration:33s;
+}
+
+.background span:nth-child(6){
+    left:76%;
+    animation-duration:26s;
+}
+
+.background span:nth-child(7){
+    left:90%;
+    animation-duration:31s;
+}
+
+.background span:nth-child(8){
+    left:55%;
+    animation-duration:27s;
+}
+
+@keyframes float{
+
+    from{
+        transform:translateY(110vh) rotate(0deg);
+    }
+
+    to{
+        transform:translateY(-20vh) rotate(360deg);
+    }
+
+}
         </style>
         """
 
@@ -514,6 +615,16 @@ def challenge_result():
         <h2>Unit: <strong>{unit}</strong>
         <p style="font-size:2em;">Zeit: <strong>{time_message}</strong></p>
         <a href="/full_reset" style="color:#3498db;">Nochmal spielen</a>
+        <div class="background">
+        <span>🥨</span>
+        <span>🇩🇪</span>
+        <span>📚</span>
+        <span>🌭</span>
+        <span>🍺</span>
+        <span>✏️</span>
+        <span>🏰</span>
+        <span>🇩🇪</span>
+        </div>
     </body>
     </html>
     """
@@ -582,6 +693,16 @@ def scores():
             {rows_html}
         </table>
         <p><a href="/">Zurück zum Spiel</a></p>
+        <div class="background">
+        <span>🥨</span>
+        <span>🇩🇪</span>
+        <span>📚</span>
+        <span>🌭</span>
+        <span>🍺</span>
+        <span>✏️</span>
+        <span>🏰</span>
+        <span>🇩🇪</span>
+        </div>
     </body>
     </html>
     """
@@ -752,6 +873,16 @@ def select_sheet():
         <h1>{session.get('player_name', '')}, welchen Wortschatz möchtest du üben?</h1>
         {sheet_html}
         <p class="feedback">{feedback}</p>
+        <div class="background">
+        <span>🥨</span>
+        <span>🇩🇪</span>
+        <span>📚</span>
+        <span>🌭</span>
+        <span>🍺</span>
+        <span>✏️</span>
+        <span>🏰</span>
+        <span>🇩🇪</span>
+        </div>
     </body>
     </html>
     """
