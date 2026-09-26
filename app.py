@@ -575,12 +575,27 @@ def home():
             {style}
         </head>
         <body>
+            <div class="background">
+                <span>🇩🇪</span>
+                <span>🥨</span>
+                <span>🍺</span>
+                <span>🌭</span>
+                <span>📚</span>
+                <span>✏️</span>
+                <span>🦅</span>
+                <span>🇩🇪</span>
+            </div>
+
             {timer_script}
             <a href="/reset" class="restart">✖</a>
-            <h1>{title_text}</h1>
-            <p class="noun-word">{current_noun.word}</p>
-            {game_type_html(game_type)}
-            <p class="feedback">{feedback}</p>
+                    {timer_script}
+                    <a href="/reset" class="restart">✖</a>
+                    <h1>{title_text}</h1>
+                    <p class="noun-word">{current_noun.word}</p>
+                    {game_type_html(game_type)}
+                    <p class="feedback">{feedback}</p>
+        </body>
+        </html>
         """
 
 
