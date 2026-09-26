@@ -150,16 +150,6 @@ def set_name():
             <button type="submit">Start!</button>
         </form>
         <p class="feedback">{feedback}</p>
-        <div class="background">
-        <span>🥨</span>
-        <span>🇩🇪</span>
-        <span>📚</span>
-        <span>🌭</span>
-        <span>🍺</span>
-        <span>✏️</span>
-        <span>🏰</span>
-        <span>🇩🇪</span>
-        </div>
     </body>
     </html>
     """
@@ -212,16 +202,6 @@ def select_game():
         </style>
     </head>
     <body>
-        <div class="background">
-            <span>🥨</span>
-            <span>🇩🇪</span>
-            <span>📚</span>
-            <span>🌭</span>
-            <span>🍺</span>
-            <span>✏️</span>
-            <span>🏰</span>
-            <span>🇩🇪</span>
-        </div>
         <h1>Was möchtest du üben?</h1>
         <form method="post">
             <button class="gender" name="game_type" value="gender">
@@ -298,16 +278,6 @@ def select_mode():
         </style>
     </head>
     <body>
-        <div class="background">
-            <span>🥨</span>
-            <span>🇩🇪</span>
-            <span>📚</span>
-            <span>🌭</span>
-            <span>🍺</span>
-            <span>✏️</span>
-            <span>🏰</span>
-            <span>🇩🇪</span>
-        </div>
         <h1>Wie möchtest du üben?</h1>
         <form method="post">
             <button class="practice" name="mode" value="practice">
@@ -626,16 +596,6 @@ def challenge_result():
         </style>
     </head>
     <body>
-        <div class="background">
-            <span>🥨</span>
-            <span>🇩🇪</span>
-            <span>📚</span>
-            <span>🌭</span>
-            <span>🍺</span>
-            <span>✏️</span>
-            <span>🏰</span>
-            <span>🇩🇪</span>
-        </div>
         <h1>🎉 Geschafft, {name}!</h1>
         <h2>Unit: <strong>{unit}</strong>
         <p style="font-size:2em;">Zeit: <strong>{time_message}</strong></p>
@@ -703,15 +663,6 @@ def scores():
     </head>
     <body>
         <div class="background">
-            <span>🥨</span>
-            <span>🇩🇪</span>
-            <span>📚</span>
-            <span>🌭</span>
-            <span>🍺</span>
-            <span>✏️</span>
-            <span>🏰</span>
-            <span>🇩🇪</span>
-        </div>
         <h1>Top Scores</h1>
         <table>
             <tr><th>Name</th><th>Punkte</th><th>Versuche</th><th>Genauigkeit</th><th>Datum</th></tr>
@@ -884,16 +835,6 @@ def select_sheet():
 
     </head>
     <body>
-        <div class="background">
-            <span>🥨</span>
-            <span>🇩🇪</span>
-            <span>📚</span>
-            <span>🌭</span>
-            <span>🍺</span>
-            <span>✏️</span>
-            <span>🏰</span>
-            <span>🇩🇪</span>
-        </div>
         <a href="/full_reset" class="restart">✖</a>
         <h1>{session.get('player_name', '')}, welchen Wortschatz möchtest du üben?</h1>
         {sheet_html}
